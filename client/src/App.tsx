@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import AppSidebar from "./Components/AppSideBar";
+import Home from "./Components/Home"; 
 
 function App() {
   return (
@@ -8,7 +9,7 @@ function App() {
         <AppSidebar />
         <main className="flex-1 p-6">
           <Routes>
-            <Route path="/" element={<div>Home Page</div>} />
+            <Route path="/" element={<Home />} />
             <Route path="/my-tasks" element={<div>My Tasks</div>} />
             <Route path="/members" element={<div>Members</div>} />
             <Route path="/settings" element={<div>Settings</div>} />
