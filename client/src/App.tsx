@@ -1,48 +1,23 @@
-import TaskCard from "./Components/TaskCard";
-import type { Task } from "./Components/TaskCard";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import AppSidebar from "./Components/AppSideBar";
 
-
-const mockTasks: Task[] = [
-  {
-    id: "1",
-    title: "Set up CI/CD pipeline",
-    priority: "Medium",
-    dueDate: "2026-03-25",
-    assignee: { name: "Alex Johnson" },
-  },
-  {
-    id: "2",
-    title: "Design dashboard UI",
-    priority: "High",
-    dueDate: "2026-03-18",
-    assignee: { name: "Sarah Miller" },
-  },
-  {
-    id: "3",
-    title: "Write unit tests",
-    priority: "Low",
-    assignee: { name: "John Doe" },
-  },
-];
-// This code is for testing the component , remove it for your use
-const App = () => {
+function App() {
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
-      <h1 className="mb-6 text-xl font-semibold text-gray-900">
-        Task Board (Test)
-      </h1>
-
-      <div className="grid gap-4 max-w-sm">
-        {mockTasks.map((task) => (
-          <TaskCard
-            key={task.id}
-            task={task}
-            onClick={() => alert(`Clicked: ${task.title}`)}
-          />
-        ))}
+    <BrowserRouter>
+      <div className="flex">
+        <AppSidebar />
+        <main className="flex-1 p-6">
+          <Routes>
+            <Route path="/" element={<div>Home Page</div>} />
+            <Route path="/my-tasks" element={<div>My Tasks</div>} />
+            <Route path="/members" element={<div>Members</div>} />
+            <Route path="/settings" element={<div>Settings</div>} />
+            <Route path="/projects/:id" element={<div>Project Detail</div>} />
+          </Routes>
+        </main>
       </div>
-    </div>
+    </BrowserRouter>
   );
-};
+}
 
 export default App;
