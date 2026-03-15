@@ -7,7 +7,7 @@ interface AnalyticsCardProps {
   tasks: Task[];
 }
 
-const AnalyticsCard = ({ tasks }: AnalyticsCardProps) => {
+export const AnalyticsCard = ({ tasks }: AnalyticsCardProps) => {
   const totalTasks = tasks.length;
   const inProgress = tasks.filter((t) => t.status === "In Progress").length;
   const completed = tasks.filter((t) => t.status === "Done").length;
@@ -62,7 +62,7 @@ const AnalyticsCard = ({ tasks }: AnalyticsCardProps) => {
   );
 };
 
-const mockTasks: Task[] = [
+export const mockTasks: Task[] = [
   {
     id: "1",
     title: "Implement authentication flow",
