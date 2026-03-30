@@ -1,12 +1,15 @@
 import { Request, Response, NextFunction } from "express";
 import { TaskStatus, TaskPriority } from "../types";
 
+const VALID_TASK_STATUSES: TaskStatus[] = ["Backlog", "Todo", "In Progress", "In Review", "Done"];
+const VALID_TASK_PRIORITIES: TaskPriority[] = ["Low", "Medium", "High"];
+
 // Simple validation middleware (expand with Zod/Joi if needed)
 export function validateTaskBody(req: Request, res: Response, next: NextFunction) {
   const { title, status, priority, projectId } = req.body;
   if (!title || typeof title !== "string") return res.status(400).json({ message: "Title is required and must be a string" });
-  if (status && !Object.values(TaskStatus).includes(status)) return res.status(400).json({ message: "Invalid status" });
-  if (priority && !Object.values(TaskPriority).includes(priority)) return res.status(400).json({ message: "Invalid priority" });
+  if (status && !VALID_TASK_STATUSES.includes(status)) return res.status(400).json({ message: "Invalid status" });
+  if (priority && !VALID_TASK_PRIORITIES.includes(priority)) return res.status(400).json({ message: "Invalid priority" });
   if (!projectId || typeof projectId !== "string") return res.status(400).json({ message: "ProjectId is required" });
   next();
 }

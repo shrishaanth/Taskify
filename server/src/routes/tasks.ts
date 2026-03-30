@@ -11,20 +11,35 @@ router.get("/", (req, res) => {
 });
 
 router.post("/", (req, res) => {
-  const { title, description, status = "todo", assigneeId, dueDate } = req.body as Partial<Task>;
-  if (!title || !assigneeId) return res.status(400).json({ message: "title and assigneeId required" });
+  const {
+    title,
+    description = "",
+    status = "Todo",
+    priority = "Medium",
+    projectId,
+    assigneeId,
+    dueDate = null,
+  } = req.body as Partial<Task>;
+
+  if (!title || !projectId) {
+    return res.status(400).json({ message: "title and projectId are required" });
+  }
 
   const newTask: Task = {
     id: `t${Date.now()}`,
     title,
-    description: description || "",
+    description,
     status: status as Task["status"],
-    assigneeId,
-    dueDate: dueDate || null,
-    createdBy: (req as any).user.userId,
+    priority: priority as Task["priority"],
+    projectId,
+    assigneeId: assigneeId ?? null,
+    dueDate: dueDate ?? null,
+    createdBy: (req as any).user?.userId ?? "",
     createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    updatedAt: new Date().toISOString(),
+    position: tasks.length,
   };
+
   tasks.push(newTask);
   req.app.get("io")?.emit("task:created", newTask);
   res.status(201).json(newTask);
@@ -33,12 +48,24 @@ router.post("/", (req, res) => {
 router.put("/:id", (req, res) => {
   const task = tasks.find((t) => t.id === req.params.id);
   if (!task) return res.status(404).json({ message: "Task not found" });
-  const { title, description, status, assigneeId, dueDate } = req.body as Partial<Task>;
+  const {
+    title,
+    description,
+    status,
+    priority,
+    projectId,
+    assigneeId,
+    dueDate,
+  } = req.body as Partial<Task>;
+
   if (title !== undefined) task.title = title;
   if (description !== undefined) task.description = description;
   if (status !== undefined) task.status = status as Task["status"];
+  if (priority !== undefined) task.priority = priority as Task["priority"];
+  if (projectId !== undefined) task.projectId = projectId;
   if (assigneeId !== undefined) task.assigneeId = assigneeId;
   if (dueDate !== undefined) task.dueDate = dueDate;
+
   task.updatedAt = new Date().toISOString();
   req.app.get("io")?.emit("task:updated", task);
   res.json(task);

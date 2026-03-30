@@ -1,6 +1,11 @@
 import express from "express";
 import cors from "cors";
 import { errorHandler } from "./middleware/error";
+import authRoutes from "./routes/auth";
+import memberRoutes from "./routes/members";
+import taskRoutes from "./routes/tasks";
+import projectRoutes from "./routes/project";
+import workspaceRoutes from "./routes/workspace";
 
 const app = express();
 
@@ -9,7 +14,11 @@ app.use(express.json());
 
 app.get("/api/health", (req, res) => res.json({ status: "ok", message: "Server is running" }));
 
-// Route mounts will be added here by Person A and Person B (e.g., app.use("/api/auth", authRoutes);)
+app.use("/api/auth", authRoutes);
+app.use("/api/members", memberRoutes);
+app.use("/api/tasks", taskRoutes);
+app.use("/api/projects", projectRoutes);
+app.use("/api/workspaces", workspaceRoutes);
 
 app.use(errorHandler);
 
