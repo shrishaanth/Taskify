@@ -2,10 +2,10 @@ import React, { createContext, useContext, useState, useCallback, useEffect } fr
 import { tasksApi, type ApiTask } from "../api/tasks";
 import { projectsApi, type ApiProject } from "../api/projects";
 import { membersApi, type ApiMember } from "../api/members";
-import { useAuth } from "./AuthContext";
 import { api } from "../api/client";
+import { useAuth } from "./AuthContext";
+import { getSocket, disconnectSocket } from "../hooks/useSocket";
 
-// Map API task to UI Task shape (KanbanBoard expects string status labels)
 export interface UITask {
   id: string;
   title: string;
@@ -69,6 +69,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Initial data fetch
   const fetchAll = useCallback(async () => {
     if (!isAuthenticated) return;
     setIsLoading(true);
@@ -93,6 +94,74 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     fetchAll();
   }, [fetchAll]);
 
+  // Socket.IO — real-time task sync
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    const socket = getSocket(token);
+
+    socket.on("connect", () => {
+      console.log("Socket connected:", socket.id);
+    });
+
+    socket.on("task:created", (newTask: ApiTask) => {
+      setTasks((prev) => {
+        if (prev.find((t) => t.id === newTask.id)) return prev;
+        setMembers((currentMembers) => {
+          const assignee = newTask.assigneeId
+            ? currentMembers.find((m) => m.id === newTask.assigneeId)
+            : undefined;
+          const uiTask: UITask = {
+            ...newTask,
+            assignee: assignee ? { name: assignee.name } : undefined,
+          };
+          setTasks((currentTasks) =>
+            currentTasks.find((t) => t.id === newTask.id)
+              ? currentTasks
+              : [...currentTasks, uiTask]
+          );
+          return currentMembers;
+        });
+        return prev;
+      });
+    });
+
+    socket.on("task:updated", (updatedTask: ApiTask) => {
+      setMembers((currentMembers) => {
+        const assignee = updatedTask.assigneeId
+          ? currentMembers.find((m) => m.id === updatedTask.assigneeId)
+          : undefined;
+        setTasks((prev) =>
+          prev.map((t) =>
+            t.id === updatedTask.id
+              ? { ...updatedTask, assignee: assignee ? { name: assignee.name } : undefined }
+              : t
+          )
+        );
+        return currentMembers;
+      });
+    });
+
+    socket.on("task:deleted", ({ id }: { id: string }) => {
+      setTasks((prev) => prev.filter((t) => t.id !== id));
+    });
+
+    socket.on("disconnect", () => {
+      console.log("Socket disconnected");
+    });
+
+    return () => {
+      socket.off("task:created");
+      socket.off("task:updated");
+      socket.off("task:deleted");
+      socket.off("connect");
+      socket.off("disconnect");
+      disconnectSocket();
+    };
+  }, [isAuthenticated]);
+
   const refetchTasks = useCallback(async (projectId?: string) => {
     try {
       const tsk = await tasksApi.list(projectId);
@@ -110,7 +179,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const assignee = newTask.assigneeId
       ? members.find((m) => m.id === newTask.assigneeId)
       : undefined;
-    setTasks((prev) => [...prev, { ...newTask, assignee: assignee ? { name: assignee.name } : undefined }]);
+    // Add optimistically — socket will handle other clients
+    setTasks((prev) => {
+      if (prev.find((t) => t.id === newTask.id)) return prev;
+      return [...prev, { ...newTask, assignee: assignee ? { name: assignee.name } : undefined }];
+    });
   }, [members]);
 
   const updateTask = useCallback(async (id: string, updates: Partial<UITask>) => {
@@ -119,7 +192,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ? members.find((m) => m.id === updated.assigneeId)
       : undefined;
     setTasks((prev) =>
-      prev.map((t) => t.id === id ? { ...updated, assignee: assignee ? { name: assignee.name } : undefined } : t)
+      prev.map((t) =>
+        t.id === id
+          ? { ...updated, assignee: assignee ? { name: assignee.name } : undefined }
+          : t
+      )
     );
   }, [members]);
 
@@ -129,22 +206,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   const moveTask = useCallback(async (taskId: string, newStatus: string) => {
-    const task = tasks.find((t) => t.id === taskId);
-    if (!task) return;
     await tasksApi.update(taskId, { status: newStatus });
     setTasks((prev) =>
       prev.map((t) => t.id === taskId ? { ...t, status: newStatus } : t)
     );
-  }, [tasks]);
+  }, []);
 
   const addProject = useCallback(async (project: { name: string; imageUrl?: string }) => {
-  // Get the real workspace id from the API
-  const workspaces = await api.get<{ id: string }[]>("/workspaces");
-  const workspaceId = workspaces[0]?.id;
-  if (!workspaceId) throw new Error("No workspace found. Please register first.");
-  const newProject = await projectsApi.create({ ...project, workspaceId, imageUrl: project.imageUrl || "" });
-  setProjects((prev) => [...prev, newProject]);
-}, []);
+    // Fetch the real workspace ID from the API
+    const workspaces = await api.get<{ id: string }[]>("/workspaces");
+    const workspaceId = workspaces[0]?.id;
+    if (!workspaceId) throw new Error("No workspace found. Please register first.");
+    const newProject = await projectsApi.create({
+      name: project.name,
+      workspaceId,
+      imageUrl: project.imageUrl || "",
+    });
+    setProjects((prev) => [...prev, newProject]);
+  }, []);
 
   return (
     <AppContext.Provider value={{

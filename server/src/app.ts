@@ -6,8 +6,6 @@ import memberRoutes from "./routes/members";
 import taskRoutes from "./routes/tasks";
 import projectRoutes from "./routes/project";
 import workspaceRoutes from "./routes/workspace";
-import dns from 'dns';
-dns.setServers(['8.8.8.8', '8.8.4.4']);
 
 const app = express();
 
